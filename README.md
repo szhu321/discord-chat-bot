@@ -18,7 +18,7 @@ This project requires a .env file that you will have to create and fill out. Her
 - `OPENAI_API_KEY=...`
     - Your openai api key.
 
-## Add Bot To Guild
+### Add Bot To Guild
 1. Go to dicord developer portal.
 2. Open up your bot.
 3. Open OAuth2 panel.
@@ -27,3 +27,24 @@ This project requires a .env file that you will have to create and fill out. Her
 6. Open the generated URL in a browser.
 7. Select the channel you would like to add the bot to and add the bot.
 
+### Running the project
+
+If you are starting with a fresh project first install all the node packages.
+```bash
+npm install
+```
+
+Then run the command to compile the TypeScript files to JavaScript files. 
+```bash
+npm run build
+```
+
+Next deploy the commands onto all the channels that your bot is in.
+```bash
+npm run deploy
+```
+
+Finally start up the bot.
+```bash
+npm start
+```
