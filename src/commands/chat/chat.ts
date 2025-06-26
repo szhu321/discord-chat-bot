@@ -1,5 +1,6 @@
-import { SlashCommandBuilder } from "discord.js";
+import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import OpenAI from "openai";
+import DiscordClient from "../../DiscordClient";
 
 const openAIClient = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -24,7 +25,8 @@ module.exports = {
                 .setName("message")
                 .setDescription("Sends a message to bot.")
                 .setRequired(true)),
-    async execute(interaction: any) {
+    async execute(interaction: ChatInputCommandInteraction) {
+        const client = interaction.client as DiscordClient;
         const message = interaction.options.getString("message") ?? "Hi!";
         const response = await openAIClient.responses.create({
             model: model,

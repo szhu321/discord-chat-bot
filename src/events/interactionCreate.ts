@@ -1,14 +1,16 @@
-import { Events, MessageFlags } from "discord.js";
+import { Events, Interaction, MessageFlags } from "discord.js";
+import DiscordClient from "../DiscordClient";
 
 module.exports = {
     name: Events.InteractionCreate,
-    async execute(interaction: any) {
+    async execute(interaction: Interaction) {
         // Only handle slash commands
         if (!interaction.isChatInputCommand()) {
             return;
         }
 
-        const command = interaction.client.commands.get(interaction.commandName);
+        const client = interaction.client as DiscordClient;
+        const command = client.commands.get(interaction.commandName);
 
         if (!command) {
             console.error(`No command matching ${interaction.commandName} was found.`);
@@ -17,6 +19,8 @@ module.exports = {
 
         try {
             await command.execute(interaction);
+
+            
         } catch (error) {
             console.error(error);
             if (interaction.replied || interaction.deferred) {
