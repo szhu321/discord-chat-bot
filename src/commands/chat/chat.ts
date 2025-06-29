@@ -1,13 +1,12 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import OpenAI from "openai";
-import DiscordClient from "../../DiscordClient";
 
 interface MessageItem {
     role: "user" | "assistant" | "system";
     content: string;
 }
 
-type MessageMap = { [userId: string]: MessageItem[] };
+type MessageMap = { [id: string]: MessageItem[] };
 
 const openAIClient = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -15,15 +14,17 @@ const openAIClient = new OpenAI({
 
 const model = 'gpt-4o-mini';
 const systemMessage = `
-You are an AI assistant that is speaking with the user on discord.
-You can be joking at times and upset at times, depending on the user's message. 
-Otherwise you are mainly friendly.
+You are an AI assistant that is speaking with users on discord.
+You can be joking at times and upset at times. Otherwise you are mainly friendly and can use emojis.
 You are to respond with as few sentences as possible, max 5. No markdown.
-If you don't know the answer to a question, say you don't know. Don't make it up.
+If you don't know the answer to a question, say you don't know. Do not make it up.
 Do not end your response with a question unless it is absolutely necessary.
+The user's message will be formatted as follows, [name]:message.
 `;
 
 const messageMap: MessageMap = {};
+
+const MAX_MESSAGE_CHAIN_LENGTH = 30;
 
 module.exports = {
     cooldown: 5,
@@ -36,30 +37,32 @@ module.exports = {
                 .setDescription("Sends a message to bot.")
                 .setRequired(true)),
     async execute(interaction: ChatInputCommandInteraction) {
+        const guildId = interaction.guildId;
         const userId = interaction.user.id;
         const username = interaction.user.username;
         const assistantName = interaction.client.user.username;
+        const messageChainId = guildId || userId;
+
         // Gets the message chain for the current user.
-        let userMessageChain = messageMap[userId];
-        if (userMessageChain === undefined) {
-            userMessageChain = [];
-            messageMap[userId] = userMessageChain;
+        let messageChain = messageMap[messageChainId];
+        if (messageChain === undefined) {
+            messageChain = [];
+            messageMap[messageChainId] = messageChain;
         }
 
         let systemMessageModified = `
             Your name is ${assistantName}.
-            You are speaking with ${username}.
             ${systemMessage}
         `;
 
-        const userMessage = interaction.options.getString("message") ?? "Hi!";
+        const userMessage = `[${username}]:` + (interaction.options.getString("message") ?? "Hi!");
 
         // Call openai
         const completion = await openAIClient.chat.completions.create({
             model: model,
             messages: [
                 { role: "system", content: systemMessageModified },
-                ...userMessageChain,
+                ...messageChain,
                 { role: "user", content: userMessage.slice(0, 1000) },
             ]
         });
@@ -67,18 +70,18 @@ module.exports = {
         const response = completion.choices[0].message.content ?? "I do not understand.";
 
         // Store user message and openai response into messageChain.
-        userMessageChain.push({
+        messageChain.push({
             role: "user",
-            content: userMessage.slice(0, 100),
+            content: userMessage.slice(0, 200),
         }, {
             role: "assistant",
             content: response,
         });
-        if (userMessageChain.length > 50) {
-            userMessageChain.splice(0, 2);
+        if (messageChain.length > MAX_MESSAGE_CHAIN_LENGTH) {
+            messageChain.splice(0, 10);
         }
 
-        // console.log(userMessageChain);
+        // console.log(messageChain);
 
         await interaction.deferReply();
         await interaction.editReply(`${response}`);
