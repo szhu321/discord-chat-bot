@@ -26,6 +26,7 @@ Do not end your response with a question unless it is absolutely necessary.
 const messageMap: MessageMap = {};
 
 module.exports = {
+    cooldown: 5,
     data: new SlashCommandBuilder()
         .setName("chat")
         .setDescription("Chat with AI.")

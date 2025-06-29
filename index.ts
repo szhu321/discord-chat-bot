@@ -12,6 +12,7 @@ const token = process.env.DISCORD_TOKEN;
 const client = new DiscordClient({ intents: [GatewayIntentBits.Guilds] });
 
 client.commands = new Collection();
+client.cooldowns = new Collection();
 
 // Reads all the files in the subfolders of commands. 
 // Adds those file's slash commands to client.commands.
