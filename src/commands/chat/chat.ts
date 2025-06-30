@@ -19,7 +19,7 @@ You can be joking at times and upset at times. Otherwise you are mainly friendly
 You are to respond with as few sentences as possible, max 5. No markdown.
 If you don't know the answer to a question, say you don't know. Do not make it up.
 Do not end your response with a question unless it is absolutely necessary.
-The user's message will be formatted as follows, [name]:message.
+The user's message will be formatted as follows, **name**:message.
 `;
 
 const messageMap: MessageMap = {};
@@ -55,7 +55,11 @@ module.exports = {
             ${systemMessage}
         `;
 
-        const userMessage = `[${username}]:` + (interaction.options.getString("message") ?? "Hi!");
+        const userMessageRaw = (interaction.options.getString("message") ?? "Hi!");
+        const userMessage = `**${username}**:` + userMessageRaw;
+
+        // Let's discord know that the a message will be sent soon.
+        await interaction.deferReply();
 
         // Call openai
         const completion = await openAIClient.chat.completions.create({
@@ -80,10 +84,7 @@ module.exports = {
         if (messageChain.length > MAX_MESSAGE_CHAIN_LENGTH) {
             messageChain.splice(0, 10);
         }
-
-        // console.log(messageChain);
-
-        await interaction.deferReply();
-        await interaction.editReply(`${response}`);
+        
+        await interaction.editReply(`**${username} said:**\n${userMessageRaw}\n**${assistantName} replied:**\n${response}`);
     },
 }
