@@ -2,11 +2,17 @@ import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import OpenAI from "openai";
 import { ChromaClient } from "chromadb";
 import { OpenAIEmbeddingFunction } from "@chroma-core/openai";
+import flipCoin from "../../tools/flip-coin";
 
-interface MessageItem {
-    role: "user" | "assistant" | "system";
-    content: string;
-}
+// interface MessageItem {
+//     role: "user" | "assistant" | "system" | "tool";
+//     content: string;
+//     tool_call_id: string;
+// }
+
+type MessageItem =
+    { role: "user" | "assistant" | "system", content: string } |
+    { role: "tool", content: string, tool_call_id: string };
 
 type MessageMap = { [id: string]: MessageItem[] };
 
@@ -24,12 +30,14 @@ You are to respond with as few sentences as possible, max 5. No markdown.
 If you don't know the answer to a question, say you don't know. Do not make it up.
 Do not end your response with a question unless it is absolutely necessary.
 The user's message will be formatted as follows, **name**:message.
-The first user message will include important past conversations.
+The first user message will contain relevant past conversations.
 `;
 
 const messageMap: MessageMap = {};
 
 const MAX_MESSAGE_CHAIN_LENGTH = 12;
+/** The max number of results that should be retrieved from chromadb. */
+const MAX_CHROMA_RESULTS_LENGTH = 12;
 const MAX_USER_MESSAGE_CHAR_COUNT = 600;
 
 module.exports = {
@@ -77,7 +85,7 @@ module.exports = {
 
         let queryResult = await collection.query({
             queryTexts: [userMessage],
-            nResults: 12,
+            nResults: MAX_CHROMA_RESULTS_LENGTH,
         });
 
 
@@ -96,6 +104,12 @@ module.exports = {
         // console.log(queryResult);
         // console.log(messages);
 
+        // Store the user's message into the messageChain.
+        messageChain.push({
+            role: "user",
+            content: userMessage.slice(0, MAX_USER_MESSAGE_CHAR_COUNT),
+        });
+
         // Call openai
         const completion = await openAIClient.chat.completions.create({
             model: model,
@@ -103,17 +117,50 @@ module.exports = {
                 { role: "system", content: systemMessageModified },
                 { role: "user", content: previousContext },
                 ...messageChain,
-                { role: "user", content: userMessage.slice(0, MAX_USER_MESSAGE_CHAR_COUNT) },
+            ],
+            tools: [
+                {
+                    type: "function",
+                    function: {
+                        name: "flip-coin",
+                        description: `Flips a coin and returns "Heads" or "Tails". Call this when the user wants to flip a coin.`,
+                    }
+                }
             ]
         });
 
-        const response = completion.choices[0].message.content ?? "I do not understand.";
+        let response: string | undefined;
+        let replyHeader: string = "";
 
-        // Store user message and openai response into messageChain.
+        if (completion.choices[0].finish_reason == "tool_calls") {
+            const toolCallResponse = completion.choices[0].message;
+            if (toolCallResponse.tool_calls) {
+                const toolCall = toolCallResponse.tool_calls[0];
+                if (toolCall.function.name === "flip-coin") {
+                    const flipCoinResult = flipCoin();
+                    replyHeader = `**${assistantName} used:** \n/flip-coin\n`;
+                    // Call openai
+                    const afterToolResponse = await openAIClient.chat.completions.create({
+                        model: model,
+                        messages: [
+                            { role: "system", content: systemMessageModified },
+                            { role: "user", content: previousContext },
+                            ...messageChain,
+                            toolCallResponse,
+                            { role: "tool", content: flipCoinResult, tool_call_id: toolCall.id, }
+                        ],
+                    });
+                    response = afterToolResponse.choices[0].message.content ?? "I do not understand.";
+                }
+            }
+        }
+
+        if (!response) {
+            response = completion.choices[0].message.content ?? "I do not understand.";
+        }
+
+        // Store openai's response into messageChain.
         messageChain.push({
-            role: "user",
-            content: userMessage.slice(0, MAX_USER_MESSAGE_CHAR_COUNT),
-        }, {
             role: "assistant",
             content: response,
         });
@@ -122,11 +169,12 @@ module.exports = {
             messageChain.splice(0, 6);
         }
 
-        const reply = `**${username} said:**\n${userMessageRaw.slice(0, MAX_USER_MESSAGE_CHAR_COUNT)}\n**${assistantName} replied:**\n${response}`;
+        const reply = `**${username} said:**\n${userMessageRaw.slice(0, MAX_USER_MESSAGE_CHAR_COUNT)}\n${replyHeader}**${assistantName} replied:**\n${response}`;
+        const storedReply = `**${username} said:**\n${userMessageRaw.slice(0, MAX_USER_MESSAGE_CHAR_COUNT)}\n**${assistantName} replied:**\n${response}`;
 
         await collection.add({
             ids: [(new Date().toJSON())],
-            documents: [reply],
+            documents: [storedReply],
         })
 
         await interaction.editReply(reply);
