@@ -45,7 +45,7 @@ module.exports = {
     async execute(interaction: ChatInputCommandInteraction) {
         const guildId = interaction.guildId;
         const userId = interaction.user.id;
-        const username = interaction.user.username;
+        const username = interaction.user.displayName;
         const assistantName = interaction.client.user.username;
         const messageChainId = guildId || userId;
 
