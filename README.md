@@ -27,6 +27,18 @@ This project requires a .env file that you will have to create and fill out. Her
 6. Open the generated URL in a browser.
 7. Select the channel you would like to add the bot to and add the bot.
 
+### Running chromadb
+In order to store past conversations we will use the chromadb vector store.
+
+1. Install chromadb with pip
+```bash
+pip install chromadb
+```
+2. Run chromadb and specify database directory.
+```bash
+chroma run --path ./chroma-db
+```
+
 ### Running the project
 
 If you are starting with a fresh project first install all the node packages.
