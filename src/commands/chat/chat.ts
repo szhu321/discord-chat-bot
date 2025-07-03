@@ -105,10 +105,7 @@ module.exports = {
         // console.log(messages);
 
         // Store the user's message into the messageChain.
-        messageChain.push({
-            role: "user",
-            content: userMessage.slice(0, MAX_USER_MESSAGE_CHAR_COUNT),
-        });
+        
 
         // Call openai
         const completion = await openAIClient.chat.completions.create({
@@ -117,6 +114,7 @@ module.exports = {
                 { role: "system", content: systemMessageModified },
                 { role: "user", content: previousContext },
                 ...messageChain,
+                {role: "user", content: userMessage.slice(0, MAX_USER_MESSAGE_CHAR_COUNT)}
             ],
             tools: [
                 {
@@ -134,30 +132,56 @@ module.exports = {
 
         if (completion.choices[0].finish_reason == "tool_calls") {
             const toolCallResponse = completion.choices[0].message;
+            const toolCallResults: MessageItem[] = [];
             if (toolCallResponse.tool_calls) {
-                const toolCall = toolCallResponse.tool_calls[0];
-                if (toolCall.function.name === "flip-coin") {
-                    const flipCoinResult = flipCoin();
-                    replyHeader = `**${assistantName} used:** \n/flip-coin\n`;
-                    // Call openai
-                    const afterToolResponse = await openAIClient.chat.completions.create({
-                        model: model,
-                        messages: [
-                            { role: "system", content: systemMessageModified },
-                            { role: "user", content: previousContext },
-                            ...messageChain,
-                            toolCallResponse,
-                            { role: "tool", content: flipCoinResult, tool_call_id: toolCall.id, }
-                        ],
-                    });
-                    response = afterToolResponse.choices[0].message.content ?? "I do not understand.";
+                replyHeader = `**${assistantName} used:** \n`
+                let flipCoinCallCount = 0;
+
+                // Break if there are more than 10 tool calls.
+                if(toolCallResponse.tool_calls.length > 10) {
+                    await interaction.editReply("Sorry, I cannot make more than 10 tool calls at once!");
+                    return;
                 }
+
+                toolCallResponse.tool_calls.forEach((toolCall) => {
+                    if (toolCall.function.name === "flip-coin") {
+                        const flipCoinResult = flipCoin();
+                        // console.log("flipping coin");
+                        flipCoinCallCount++;
+                        toolCallResults.push({ role: "tool", content: flipCoinResult, tool_call_id: toolCall.id });
+                    }
+                });
+
+                if(flipCoinCallCount > 1) {
+                    replyHeader += `/flip-coin (${flipCoinCallCount} times)\n`;
+                } else if(flipCoinCallCount == 1) {
+                    replyHeader += `/flip-coin\n`;
+                }
+                // Call openai
+                const afterToolResponse = await openAIClient.chat.completions.create({
+                    model: model,
+                    messages: [
+                        { role: "system", content: systemMessageModified },
+                        { role: "user", content: previousContext },
+                        ...messageChain,
+                        {role: "user", content: userMessage.slice(0, MAX_USER_MESSAGE_CHAR_COUNT)},
+                        toolCallResponse,
+                        ...toolCallResults,
+                    ],
+                });
+                response = afterToolResponse.choices[0].message.content ?? "I do not understand.";
             }
         }
 
         if (!response) {
             response = completion.choices[0].message.content ?? "I do not understand.";
         }
+
+        // Add the user's message to the message chain.
+        messageChain.push({
+            role: "user",
+            content: userMessage.slice(0, MAX_USER_MESSAGE_CHAR_COUNT),
+        });
 
         // Store openai's response into messageChain.
         messageChain.push({
