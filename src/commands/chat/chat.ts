@@ -23,7 +23,9 @@ const openAIClient = new OpenAI({
 const chromaClient = new ChromaClient();
 
 
-const model = 'gpt-4o-mini';
+// const model = 'gpt-4o-mini';
+const model = 'gpt-4.1-mini';
+const temperature = 0.75;
 const systemMessage = `You are an AI assistant that is speaking with users on discord.
 You can be joking at times and upset at times. Otherwise you are mainly friendly and can use emojis.
 You are to respond with as few sentences as possible, max 5. No markdown.
@@ -124,7 +126,8 @@ module.exports = {
                         description: `Flips a coin and returns "Heads" or "Tails". Call this when the user wants to flip a coin.`,
                     }
                 }
-            ]
+            ],
+            temperature: temperature,
         });
 
         let response: string | undefined;
@@ -168,6 +171,7 @@ module.exports = {
                         toolCallResponse,
                         ...toolCallResults,
                     ],
+                    temperature: temperature,
                 });
                 response = afterToolResponse.choices[0].message.content ?? "I do not understand.";
             }
