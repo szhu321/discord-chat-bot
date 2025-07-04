@@ -16,10 +16,12 @@ This project requires a .env file that you will have to create and fill out. Her
     - Can be obtained from the Bot section on your discord developer portal.
 - `CLIENT_ID=...`
     - Can be obtained from the General Information section on your discord developer portal. (AKA. APPLICATION ID).
-- `GUILD_ID=...`
-    - `(Optional)` Only useful if you want to deploy your bot to a specific guild.
+- `GUILD_ID=...` **(Optional)**
+    -  Only useful if you want to deploy slash commands to a specific guild when running `npm run deploy`. Otherwise it will deploy to all the guilds the bot is on. 
 - `OPENAI_API_KEY=...`
     - Your openai api key.
+- `OPENAI_MODEL=...` **(Optional)**
+    - Your openai model. Defaults to `gpt-4o-mini`.
 
 ### Add Bot To Guild
 1. Go to dicord developer portal.

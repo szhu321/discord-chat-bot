@@ -1,15 +1,21 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Collection, GatewayIntentBits } from "discord.js";
+import { Collection, Events, GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
 import DiscordClient from "./src/DiscordClient";
+import { chatWithBot } from "./src/utils/llm-util";
 
 dotenv.config();
 
 const token = process.env.DISCORD_TOKEN;
 
 // Create a new client instance
-const client = new DiscordClient({ intents: [GatewayIntentBits.Guilds] });
+const client = new DiscordClient({
+	intents: [
+		GatewayIntentBits.Guilds,
+		GatewayIntentBits.GuildMessages,
+	]
+});
 
 client.commands = new Collection();
 client.cooldowns = new Collection();
@@ -41,13 +47,40 @@ const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'
 for (const file of eventFiles) {
 	const filePath = path.join(eventsPath, file);
 	const event = require(filePath);
-	
+
 	if (event.once) {
 		client.once(event.name, (...args) => event.execute(...args));
 	} else {
 		client.on(event.name, (...args) => event.execute(...args));
 	}
 }
+
+client.on(Events.MessageCreate, async (message) => {
+	// Ignore the messages sent by the bot.
+	if (message.author.bot) {
+		return;
+	}
+
+	// Only respond to messages that the bot is tagged in.
+	if (client.user && message.mentions.has(client.user)) {
+		// console.log("User: ", message.author.id);
+		// console.log("Message: ", message.content);
+		// console.log("Mentiones: ", message.mentions);
+
+		message.channel.sendTyping();
+
+		const { rawReply } = await chatWithBot({
+			guildId: message.guildId,
+			botName: client.user.displayName,
+			botId: client.user.id,
+			userId: message.author.id,
+			userName: message.author.displayName,
+			messageContent: message.content,
+		});
+
+		message.reply(rawReply);
+	}
+});
 
 // Log in to Discord with your client's token
 client.login(token);
