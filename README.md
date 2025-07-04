@@ -1,6 +1,9 @@
 # Discord Chat Bot
 
 A discord chat bot. This bot is created using discord.js and openai.
+- Supports RAG, using chromadb, to retrieve relevent past conversations.
+- Supports message chaining to use previous message as context.
+- Supports tool use to simulate running other discord /commands.
 
 
 ## Setup
@@ -59,4 +62,12 @@ npm run deploy
 Finally start up the bot.
 ```bash
 npm start
+```
+
+## Developement
+In development we will use nodemon to restart our app when we make changes to the codebase.
+
+To begin run:
+```bash
+npm run dev
 ```

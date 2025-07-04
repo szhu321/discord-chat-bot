@@ -1,8 +1,9 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import OpenAI from "openai";
-import { ChromaClient } from "chromadb";
-import { OpenAIEmbeddingFunction } from "@chroma-core/openai";
+// import { ChromaClient } from "chromadb";
+// import { OpenAIEmbeddingFunction } from "@chroma-core/openai";
 import flipCoin from "../../tools/flip-coin";
+import { addChatHistory, queryChatHistory } from "../../utils/chroma-util";
 
 // interface MessageItem {
 //     role: "user" | "assistant" | "system" | "tool";
@@ -20,7 +21,7 @@ const openAIClient = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 })
 
-const chromaClient = new ChromaClient();
+// const chromaClient = new ChromaClient();
 
 
 // const model = 'gpt-4o-mini';
@@ -68,45 +69,19 @@ module.exports = {
 
         let systemMessageModified = `Your name is ${assistantName}. ${systemMessage}`;
 
-        const userMessageRaw = (interaction.options.getString("message") ?? "Hi!");
+        const userMessageRaw = (interaction.options.getString("message") ?? "Hi!").slice(0, MAX_USER_MESSAGE_CHAR_COUNT);
         const userMessage = `**${username}**:` + userMessageRaw;
 
         // Let's discord know that the a message will be sent soon.
         await interaction.deferReply();
 
-        // Get the chroma collection from chroma client.
-        const collection = await chromaClient.getOrCreateCollection({
-            name: "chat-history",
-            embeddingFunction: new OpenAIEmbeddingFunction({
-                apiKey: process.env.OPENAI_API_KEY,
-                modelName: "text-embedding-3-small",
-            })
-        });
 
-        // Get similar context from chroma db.
-
-        let queryResult = await collection.query({
-            queryTexts: [userMessage],
-            nResults: MAX_CHROMA_RESULTS_LENGTH,
-        });
-
+        let queryResult = await queryChatHistory({queryTexts: [userMessage], nResults: MAX_CHROMA_RESULTS_LENGTH});
 
         let previousContext = "The following context may be useful in the conversation: ";
         queryResult.documents[0].forEach((item) => {
             previousContext += "\n" + item;
         });
-
-        // let messages = [
-        //     { role: "system", content: systemMessageModified },
-        //     { role: "user", content: previousContext },
-        //     ...messageChain,
-        //     { role: "user", content: userMessage.slice(0, MAX_USER_MESSAGE_CHAR_COUNT) },
-        // ];
-
-        // console.log(queryResult);
-        // console.log(messages);
-
-        // Store the user's message into the messageChain.
         
 
         // Call openai
@@ -116,7 +91,7 @@ module.exports = {
                 { role: "system", content: systemMessageModified },
                 { role: "user", content: previousContext },
                 ...messageChain,
-                {role: "user", content: userMessage.slice(0, MAX_USER_MESSAGE_CHAR_COUNT)}
+                {role: "user", content: userMessage}
             ],
             tools: [
                 {
@@ -167,7 +142,7 @@ module.exports = {
                         { role: "system", content: systemMessageModified },
                         { role: "user", content: previousContext },
                         ...messageChain,
-                        {role: "user", content: userMessage.slice(0, MAX_USER_MESSAGE_CHAR_COUNT)},
+                        {role: "user", content: userMessage},
                         toolCallResponse,
                         ...toolCallResults,
                     ],
@@ -184,7 +159,7 @@ module.exports = {
         // Add the user's message to the message chain.
         messageChain.push({
             role: "user",
-            content: userMessage.slice(0, MAX_USER_MESSAGE_CHAR_COUNT),
+            content: userMessage,
         });
 
         // Store openai's response into messageChain.
@@ -197,13 +172,15 @@ module.exports = {
             messageChain.splice(0, 6);
         }
 
-        const reply = `**${username} said:**\n${userMessageRaw.slice(0, MAX_USER_MESSAGE_CHAR_COUNT)}\n${replyHeader}**${assistantName} replied:**\n${response}`;
-        const storedReply = `**${username} said:**\n${userMessageRaw.slice(0, MAX_USER_MESSAGE_CHAR_COUNT)}\n**${assistantName} replied:**\n${response}`;
+        // console.log(messageChain);
 
-        await collection.add({
+        const reply = `**${username} said:**\n${userMessageRaw}\n${replyHeader}**${assistantName} replied:**\n${response}`;
+        const storedReply = `**${username} said:**\n${userMessageRaw}\n**${assistantName} replied:**\n${response}`;
+
+        await addChatHistory({
             ids: [(new Date().toJSON())],
             documents: [storedReply],
-        })
+        });
 
         await interaction.editReply(reply);
     },
