@@ -185,3 +185,14 @@ export const chatWithBot = async ({
         rawReply: response,
     };
 }
+
+export const getEasierSynonym = async (word: string) => {
+    const completion = await openAIClient.chat.completions.create({
+        model: model,
+        messages: [
+            { role: "system", content: `You are a bot that makes hard words easier. You are to return a synonym of the word provided by the user. Only respond with one word and nothing else.` },
+            { role: "user", content: word },
+        ],
+    });
+    return completion.choices[0].message.content;
+}
