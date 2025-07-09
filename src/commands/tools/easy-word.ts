@@ -1,5 +1,4 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
-import flipCoin from "../../tools/flip-coin";
 import { getEasierSynonym } from "../../utils/llm-util";
 
 module.exports = {
@@ -9,7 +8,7 @@ module.exports = {
         .addStringOption(option =>
             option
                 .setName("word")
-                .setDescription("Give a bot a word so it can find a easier synonym.")
+                .setDescription("Give the bot a word so it can find a easier synonym.")
                 .setRequired(true)),
     async execute(interaction: ChatInputCommandInteraction) {
         // Let's discord know that the a message will be sent soon.

@@ -2,6 +2,8 @@ import OpenAI from "openai";
 import dotenv from "dotenv";
 import { addChatHistory, queryChatHistory } from "./chroma-util";
 import flipCoin from "../tools/flip-coin";
+import { encodeChat } from "gpt-tokenizer";
+import { ChatMessage } from "gpt-tokenizer/esm/GptEncoding";
 
 dotenv.config();
 
@@ -76,6 +78,13 @@ export const chatWithBot = async ({
     });
 
     // console.log(systemMessageModified);
+
+    // const messages: MessageItem[] = [{ role: "system", content: systemMessageModified },
+    //         { role: "user", content: previousContext },
+    //         ...messageChain,
+    //         { role: "user", content: userMessage }];
+    
+    // countTokens(messages);
 
     // Call openai
     const completion = await openAIClient.chat.completions.create({
@@ -195,4 +204,29 @@ export const getEasierSynonym = async (word: string) => {
         ],
     });
     return completion.choices[0].message.content;
+}
+
+
+/**
+ * Counts the number of tokens inside messages.
+ * @param messages A list of MessageItems.
+ * @returns Number of tokens inside messages. -1 if failed to count.
+ */
+export const countTokens = (messages: MessageItem[]) => {
+    const chat: ChatMessage[] = [];
+    messages.forEach((message) => {
+        if(message.role !== "tool") {
+            chat.push({
+                role: message.role,
+                content: message.content,
+            });
+        }
+    });
+
+    try {
+        const chatTokens = encodeChat(chat, model as any);
+        return chatTokens.length;
+    } catch (e) {
+        return -1;
+    }
 }
