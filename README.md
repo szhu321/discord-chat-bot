@@ -73,3 +73,27 @@ To begin run:
 ```bash
 npm run dev
 ```
+
+
+## Packages Used
+
+### discord.js
+Used to interact with the discord API. Can be used to create slash commands and listen for new messages. See more [here](https://discord.js.org/).
+
+### chromadb
+Used to create a RAG system so that we can query relevant past context based on the user's message. See more [here](https://docs.trychroma.com/docs/overview/introduction).
+
+### @chroma-core/openai
+Used to integrate chromadb with openai's vector embedding models. See more [here](https://www.npmjs.com/package/@chroma-core/openai).
+
+### dotenv
+We like `.env` files. Useful for storing api keys and application specific configs. See more [here](https://www.npmjs.com/package/dotenv).
+
+### openai
+Used for calling OpenAI's APIs. We will use this to create our llm chatbot. See more [here](https://www.npmjs.com/package/openai).
+
+### gpt-tokenizer
+Used to count the number of tokens passed to OpenAI's APIs. See more [here](https://www.npmjs.com/package/gpt-tokenizer).
+
+### pino
+Used to log development information and runtime information. See more [here](https://getpino.io).
