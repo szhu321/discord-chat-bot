@@ -105,7 +105,7 @@ export const chatWithBot = async ({
         { role: "user", content: userMessage }
     ]
 
-    console.log(messages);
+    // console.log(messages);
     console.log(`Request with ${countTokens(messages)} tokens.`);
 
     // --- 5. Call openai ---
