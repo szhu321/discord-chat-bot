@@ -14,6 +14,7 @@ const client = new DiscordClient({
 	intents: [
 		GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildMessages,
+		GatewayIntentBits.GuildMembers,
 	]
 });
 
@@ -70,7 +71,7 @@ client.on(Events.MessageCreate, async (message) => {
 		message.channel.sendTyping();
 
 		const { rawReply } = await chatWithBot({
-			guildId: message.guildId,
+			guild: message.guild,
 			botName: client.user.displayName,
 			botId: client.user.id,
 			userId: message.author.id,

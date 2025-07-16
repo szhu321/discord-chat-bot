@@ -16,7 +16,7 @@ module.exports = {
         await interaction.deferReply();
         // Run chat bot. A reply will be returned.
         const { formattedReply } = await chatWithBot({
-            guildId: interaction.guildId,
+            guild: interaction.guild,
             botName: interaction.client.user.displayName,
             botId: interaction.client.user.id,
             userId: interaction.user.id,
